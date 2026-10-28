@@ -178,43 +178,77 @@ aaPanel's MariaDB runs on the host, not in Docker. The API reaches it through
 * **Building behind a TLS-intercepting proxy:** pass its CA with
   `docker build --secret id=ca,src=ca.crt ./api`.
 
-## Going live (first time)
+## Deploying to server 1 (aaPanel) with Docker
 
-**1. DNS at Namecheap.** Open Domain List → techadastra.com → Manage → Advanced DNS. Remove
-the parking records, then add:
+The Docker stack (site, contact API and its own MariaDB) runs on the server and listens
+only on `127.0.0.1:8484`. aaPanel's nginx sits in front of it, handles HTTPS, and forwards
+techadastra.com to it. Nothing is shared with other sites on the server: the stack has its
+own containers, network and database volume, all named `techadastra*`.
 
-| Type | Host | Value |
-|---|---|---|
-| A Record | `@` | `63.250.54.80` |
-| CNAME Record | `www` | `techadastra.com.` |
+**1. DNS at Namecheap.** Open Domain List → techadastra.com → Manage → Advanced DNS. Delete
+the parking records (the `CNAME www → parkingpage…` and URL Redirect records), then add:
 
-**2. Create the site in aaPanel.** Go to Website → Add site:
-* Domain: `techadastra.com` and `www.techadastra.com`
-* Root: `/www/wwwroot/techadastra.com`
-* PHP: *Static*
-* No database
+| Type | Host | Value | TTL |
+|---|---|---|---|
+| A Record | `@` | `63.250.54.80` | Automatic |
+| CNAME Record | `www` | `techadastra.com.` | Automatic |
 
-**3. Upload the files** from a machine that can SSH to the server:
+Check with `nslookup techadastra.com`. It should answer `63.250.54.80`, usually within
+minutes and at most a few hours.
 
-```bash
-./deploy/deploy.sh
-```
-
-This needs Node 18+ and rsync on that machine. Without them, run `node build.mjs` and
-upload the contents of `dist/` to the site root with the aaPanel file manager.
-
-**4. SSL.** After DNS resolves, go to Website → techadastra.com → SSL → Let's Encrypt.
-Select both domains, apply, and turn on **Force HTTPS**. Under *Redirect*, send
-`www.techadastra.com` to `https://techadastra.com`. The canonical URLs use the domain
-without `www`.
-
-**5. Nginx extras.** Go to Website → techadastra.com → Conf and paste
-`deploy/nginx-aapanel.conf` as the comments in that file describe. This adds clean URLs,
-a 404 page per language, and makes `config.js` uncacheable so that edits made on the server
-show up immediately.
-
-## Later deploys
+**2. Install the stack.** SSH in (`ssh -p 2222 root@63.250.54.80`), then:
 
 ```bash
-./deploy/deploy.sh
+docker --version && docker compose version     # if missing: aaPanel → App Store → Docker
+git clone https://github.com/moh30ly/techadastra.git /opt/techadastra
+cd /opt/techadastra
+cp .env.example .env
+sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=$(openssl rand -hex 16)/; s/^ADMIN_TOKEN=.*/ADMIN_TOKEN=$(openssl rand -hex 24)/" .env
+docker compose up -d --build
+curl -sI http://127.0.0.1:8484/en/ | head -1   # → HTTP/1.1 200 OK
 ```
+
+**3. Create the site in aaPanel.** Go to Website → Add site. Enter `techadastra.com` and
+`www.techadastra.com` as domains, choose PHP *Static*, and create no database or FTP.
+
+**4. SSL.** Once DNS resolves: Website → techadastra.com → SSL → Let's Encrypt → select
+both domains → Apply. Then turn on **Force HTTPS**. Do this *before* step 5, so that
+Let's Encrypt can verify the domain while the site still serves files from disk.
+
+**5. Reverse proxy.** Website → techadastra.com → Reverse proxy → Add reverse proxy:
+* Proxy name: `techadastra`
+* Target URL: `http://127.0.0.1:8484`
+* Sent domain: `$host`
+
+Save, then open https://techadastra.com.
+
+**6. Redirect www.** Website → techadastra.com → Redirect: send `www.techadastra.com` to
+`https://techadastra.com`. The canonical URLs use the domain without `www`.
+
+**7. Settings.** Edit `/opt/techadastra/src/assets/config.js`: set the edition (`theme`),
+the social links, the WhatsApp number and the phone number. Changes are live on the next
+page load.
+
+**Reading enquiries:**
+
+```bash
+cd /opt/techadastra && curl -s -H "Authorization: Bearer $(grep ^ADMIN_TOKEN .env | cut -d= -f2)" http://127.0.0.1:8484/api/messages
+```
+
+**Updating to a new version:**
+
+```bash
+cd /opt/techadastra && git pull && docker compose up -d --build
+```
+
+## Alternative: static hosting without Docker
+
+This option has no contact API: the form falls back to opening the visitor's email app.
+For steps 1, 3, 4 and 6, follow the Docker guide above, then skip the reverse proxy and
+instead:
+
+* Use `/www/wwwroot/techadastra.com` as the site root.
+* Run `./deploy/deploy.sh` from a machine with Node 18+, rsync and SSH access to the server,
+  or upload the contents of `dist/` (after `node build.mjs`) with the aaPanel file manager.
+* Paste `deploy/nginx-aapanel.conf` into Website → techadastra.com → Conf, as the comments
+  in that file describe.

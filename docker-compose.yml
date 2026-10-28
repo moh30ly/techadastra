@@ -19,7 +19,10 @@ services:
     build: .
     image: techadastra-web
     ports:
-      - "${WEB_PORT:-8484}:80"
+      # Listens on this machine only. On a server, the public site goes through the host's
+      # web server (e.g. aaPanel's nginx) as a reverse proxy, which also handles HTTPS.
+      # Set WEB_BIND=0.0.0.0 in .env only if other machines must reach this port directly.
+      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8484}:80"
     volumes:
       # Edit config.js (and CSS/JS/images) without rebuilding. The whole folder is mounted:
       # a single-file mount would keep serving the old file after most editors save it.
