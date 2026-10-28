@@ -233,12 +233,12 @@
       var endpoint = (CFG.contactForm || {}).endpoint;
       var to = (CFG.contact || {}).email || 'info@techadastra.com';
 
-      if (!endpoint) {
+      var mailto = function () {
         var body = data.message + '\n\n—\n' + data.name + '\n' + data.email + (data.phone ? '\n' + data.phone : '') + '\n' + data.interest + ' · ' + data.language;
         location.href = 'mailto:' + to + '?subject=' + encodeURIComponent('Adastra — ' + data.interest + ' — ' + data.name) + '&body=' + encodeURIComponent(body);
         say(t.mailtoNotice, 'ok');
-        return;
-      }
+      };
+      if (!endpoint) return mailto();
 
       btn.disabled = true;
       btn.textContent = t.sending;
@@ -248,8 +248,14 @@
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify(data),
       })
-        .then(function (r) { if (!r.ok) throw new Error(r.status); form.reset(); say(t.success, 'ok'); })
-        .catch(function () { say(t.error, 'err'); })
+        .then(function (r) {
+          // No API behind this deployment (plain static hosting): fall back to email.
+          if ([404, 405, 501, 502, 503, 504].indexOf(r.status) >= 0) return mailto();
+          if (!r.ok) throw new Error(r.status);
+          form.reset();
+          say(t.success, 'ok');
+        })
+        .catch(function (err) { if (err instanceof TypeError) mailto(); else say(t.error, 'err'); })
         .then(function () { btn.disabled = false; btn.innerHTML = btnHtml; });
     });
 

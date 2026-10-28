@@ -21,9 +21,13 @@ techadastra/
 │       ├── css/style.css
 │       ├── js/main.js
 │       └── img/              # favicon, apple-touch-icon, og.png (link previews)
+├── api/                      # contact-form API (Node + Postgres)
+├── Dockerfile                # builds the site into an nginx image
+├── docker-compose.yml        # web + api + db
 └── deploy/
-    ├── deploy.sh             # build and rsync to server 1
-    └── nginx-aapanel.conf    # extra vhost rules to paste into aaPanel
+    ├── deploy.sh             # build and rsync to server 1 (static only)
+    ├── nginx-aapanel.conf    # extra vhost rules to paste into aaPanel
+    └── docker/nginx.conf     # nginx config used inside the Docker image
 ```
 
 Pages: `/en/`, `/tr/`, `/de/`, and under each of them `programs/`, `consulting/`, `about/`
@@ -41,7 +45,7 @@ browser's language. If neither is set, it uses English. The build also writes `s
 | `whatsapp.widgetScriptUrl` | For the WhatsApp chat integration you plan later (WATI, respond.io, Twilio, Elfsight…). Paste the provider's script URL here. It loads on every page and replaces the built-in button. |
 | `contact.email`, `contact.phone`, `contact.address`, `contact.hours` | Shown in the footer and on the contact page. An empty value hides that line. |
 | `contact.mapEmbedUrl` | Google Maps → Share → Embed a map → copy the `src`. |
-| `contactForm.endpoint` | The URL the contact form POSTs its JSON to, e.g. a Formspree, Getform or Web3Forms endpoint. While it is empty, the form opens the visitor's email app with a message addressed to `contact.email`. |
+| `contactForm.endpoint` | The URL the contact form POSTs its JSON to. The default, `/api/contact`, is the bundled API, which saves enquiries to the database (see Docker below). Formspree, Getform or Web3Forms URLs also work. If the value is empty, or no API answers at that URL (for example on plain static hosting), the form opens the visitor's email app with a message addressed to `contact.email`. |
 
 The browser reads this file on every page load, so you have two ways to change it:
 
@@ -66,6 +70,36 @@ To preview locally:
 ```bash
 cd dist && python3 -m http.server 8080
 ```
+
+## Running with Docker (site + contact API + database)
+
+```bash
+cp .env.example .env        # set POSTGRES_PASSWORD and ADMIN_TOKEN
+docker compose up -d --build
+```
+
+The site is then at http://localhost:8080. Change the port with `WEB_PORT` in `.env`.
+Contact-form enquiries are saved in the `contact_messages` table. To read them:
+
+```bash
+curl -H "Authorization: Bearer $ADMIN_TOKEN" http://localhost:8080/api/messages
+```
+
+```bash
+docker compose exec db psql -U adastra -d adastra -c "select * from contact_messages order by id desc"
+```
+
+* **Using an existing database:** set `DATABASE_URL=postgres://user:pass@host:5432/db` in
+  `.env`, then run `docker compose up -d --build web api`. The API creates its table on
+  start.
+* **Settings:** `src/assets/config.js` is mounted into the container, so edits to it are
+  live without a rebuild. After changing text in `src/content/`, run
+  `docker compose up -d --build web`.
+* **API limits:** the API accepts at most 5 enquiries per IP every 10 minutes. It
+  rejects fields that are too long and silently drops submissions that fill in the
+  honeypot field.
+* **Building behind a TLS-intercepting proxy:** pass its CA with
+  `docker build --secret id=ca,src=ca.crt ./api`.
 
 ## Going live (first time)
 

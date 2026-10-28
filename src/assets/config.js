@@ -42,9 +42,11 @@ window.ADASTRA_CONFIG = {
   },
 
   contactForm: {
-    // Where the contact form is POSTed (JSON). Works with Formspree, Getform,
-    // Web3Forms, or your own endpoint. While empty, the form opens the
+    // Where the contact form is POSTed (JSON). '/api/contact' is the bundled
+    // API (see docker-compose.yml), which stores enquiries in the database.
+    // Formspree, Getform or Web3Forms URLs work too. If the endpoint is empty
+    // or there is no API behind it (plain static hosting), the form opens the
     // visitor's email app addressed to contact.email instead.
-    endpoint: '',
+    endpoint: '/api/contact',
   },
 };

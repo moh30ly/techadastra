@@ -1,0 +1,48 @@
+# Local / self-hosted stack for techadastra.com:
+#   web  nginx serving the built site, proxying /api/ → api
+#   api  contact-form API (stores enquiries in Postgres)
+#   db   Postgres 16
+#
+#   cp .env.example .env   # set passwords
+#   docker compose up -d --build
+#   open http://localhost:8080
+#
+# To use an existing Postgres instead of the bundled one, set DATABASE_URL in .env
+# and start only web + api:  docker compose up -d --build web api
+services:
+  web:
+    build: .
+    image: techadastra-web
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    volumes:
+      # Edit settings without rebuilding.
+      - ./src/assets/config.js:/usr/share/nginx/html/assets/config.js:ro
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  api:
+    build: ./api
+    image: techadastra-api
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgres://adastra:${POSTGRES_PASSWORD:-adastra}@db:5432/adastra}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:?set ADMIN_TOKEN in .env}
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: adastra
+      POSTGRES_USER: adastra
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-adastra}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U adastra -d adastra"]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  db-data:
