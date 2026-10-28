@@ -84,7 +84,7 @@ const header = (L, page) => {
       </div>
     </nav>
     <div class="header-actions">
-      <div class="lang" data-lang>
+      <div class="lang" data-lang-switcher>
         <button class="lang-btn" type="button" aria-expanded="false" aria-haspopup="true" aria-label="${esc(L.nav.language)}">${icon('globe')}<span>${L.short}</span>${icon('chevron', 'chev')}</button>
         <ul class="lang-menu" role="list">${langs}</ul>
       </div>

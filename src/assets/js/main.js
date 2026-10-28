@@ -74,7 +74,7 @@
     $$('.main-nav a').forEach(function (a) { a.addEventListener('click', function () { setMenu(false); }); });
     window.addEventListener('resize', function () { if (window.innerWidth > 960) setMenu(false); });
 
-    var langBox = $('[data-lang]');
+    var langBox = $('[data-lang-switcher]');
     var langBtn = $('.lang-btn', langBox);
     var setLang = function (open) { langBox.classList.toggle('open', open); langBtn.setAttribute('aria-expanded', String(open)); };
     langBtn.addEventListener('click', function (e) { e.stopPropagation(); setLang(!langBox.classList.contains('open')); });
