@@ -10,6 +10,13 @@
  * ─────────────────────────────────────────────────────────────────────────
  */
 window.ADASTRA_CONFIG = {
+  // Site edition:
+  //   'classic'    — the original dark, space-themed design (courses for everyone)
+  //   'enterprise' — light, corporate design focused on training for companies
+  // To compare without changing this, open any page with ?theme=enterprise or
+  // ?theme=classic (that browser tab keeps it; ?theme=reset goes back to this value).
+  theme: 'classic',
+
   social: {
     // Full profile URLs. Empty string hides the icon everywhere.
     instagram: 'https://www.instagram.com/techadastra', // TODO: confirm handle

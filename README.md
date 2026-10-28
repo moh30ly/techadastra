@@ -15,10 +15,12 @@ techadastra/
 │   ├── content/en.mjs        # all English text
 │   ├── content/tr.mjs        # all Turkish text
 │   ├── content/de.mjs        # all German text
+│   ├── content/enterprise/   # extra text for the enterprise edition (en, tr, de)
 │   ├── icons.mjs             # inline SVG icons
 │   └── assets/
-│       ├── config.js         # ← social links, WhatsApp, contact details, form endpoint
-│       ├── css/style.css
+│       ├── config.js         # ← edition (theme), social links, WhatsApp, contact, form
+│       ├── css/style.css     # classic design
+│       ├── css/enterprise.css # enterprise design + the edition switch
 │       ├── js/main.js
 │       └── img/              # favicon, apple-touch-icon, og.png (link previews)
 ├── api/                      # contact-form API (Node; MariaDB/MySQL or Postgres)
@@ -35,10 +37,31 @@ and `contact/`. The site root `/` sends visitors to their saved language, or to 
 browser's language. If neither is set, it uses English. The build also writes `sitemap.xml`,
 `robots.txt`, hreflang tags, Open Graph tags and schema.org data.
 
+## Two editions: classic and enterprise
+
+The site ships in two designs, and every page contains both:
+
+| `theme` | Look | Positioning |
+|---|---|---|
+| `'classic'` | Dark, space-themed, with gradients and a starfield | Technology education for everyone, including kids & teens |
+| `'enterprise'` | Light, corporate: navy and white with serif headlines | Corporate training for companies, with "Request a proposal" calls to action, a home page written for HR and L&D teams, and no kids & teens program |
+
+**To switch editions,** set `theme` at the top of `src/assets/config.js`, or of `assets/config.js`
+on the server. The change is live on the next page load and needs no rebuild.
+
+**To compare them without switching,** add `?theme=enterprise` or `?theme=classic` to any page
+URL. Only your browser tab sees the preview, and it stays on while you browse. A small
+*Preview* switch in the bottom-left corner flips between the editions; its ✕ (or
+`?theme=reset`) ends the preview. Visitors never see that switch.
+
+Text used only by the enterprise edition is in `src/content/enterprise/{en,tr,de}.mjs`. All
+other text is shared, in `src/content/{en,tr,de}.mjs`.
+
 ## Changing links and contact details: `src/assets/config.js`
 
 | Setting | What it does |
 |---|---|
+| `theme` | `'classic'` or `'enterprise'`. See *Two editions* above. |
 | `social.instagram`, `social.linkedin` | Full profile URLs. Set one to `''` to hide that icon everywhere. |
 | `whatsapp.number` | Digits only, in international format, e.g. `905321234567`. While it is empty, the WhatsApp buttons open the contact page. |
 | `whatsapp.floatingButton` | Shows or hides the green chat button and the "Start chat" card. |
@@ -146,8 +169,8 @@ aaPanel's MariaDB runs on the host, not in Docker. The API reaches it through
 
 ### Other Docker notes
 
-* **Settings:** `src/assets/config.js` is mounted into the container, so edits to it are
-  live without a rebuild. After changing text in `src/content/`, run
+* **Settings:** the `src/assets` folder is mounted into the container, so edits to
+  `config.js`, including the `theme` switch, are live without a rebuild. After changing text in `src/content/`, run
   `docker compose up -d --build web`.
 * **API limits:** the API accepts at most 5 enquiries per IP every 10 minutes. It
   rejects fields that are too long and silently drops submissions that fill in the

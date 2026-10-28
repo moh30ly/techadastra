@@ -11,12 +11,20 @@ import vm from 'node:vm';
 import en from './src/content/en.mjs';
 import tr from './src/content/tr.mjs';
 import de from './src/content/de.mjs';
+import enEnt from './src/content/enterprise/en.mjs';
+import trEnt from './src/content/enterprise/tr.mjs';
+import deEnt from './src/content/enterprise/de.mjs';
 import { icon } from './src/icons.mjs';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const OUT = join(ROOT, 'dist');
 const SITE_URL = 'https://techadastra.com';
 const LANGS = [en, tr, de];
+// Enterprise-edition text hangs off each language as L.ent.
+en.ent = enEnt;
+tr.ent = trEnt;
+de.ent = deEnt;
+const THEMES = ['classic', 'enterprise'];
 const YEAR = new Date().getFullYear();
 const VERSION = Date.now().toString(36); // cache-buster for css/js
 
@@ -24,6 +32,7 @@ const VERSION = Date.now().toString(36); // cache-buster for css/js
 const sandbox = { window: {} };
 vm.runInNewContext(readFileSync(join(ROOT, 'src/assets/config.js'), 'utf8'), sandbox);
 const CFG = sandbox.window.ADASTRA_CONFIG;
+const THEME = CFG.theme === 'enterprise' ? 'enterprise' : 'classic';
 
 const PAGES = [
   { id: 'home', slug: '' },
@@ -41,6 +50,11 @@ const waHref = (L) =>
     ? `https://wa.me/${CFG.whatsapp.number}?text=${encodeURIComponent(L.common.whatsappPrefill)}`
     : href(L, 'contact/');
 const hiddenIf = (cond) => (cond ? ' hidden' : '');
+
+// Both editions are in every page; html[data-theme] decides which one shows (see config.js).
+// V() is for inline text, VB() for whole blocks.
+const V = (classic, enterprise) => `<span class="v-c">${classic}</span><span class="v-e">${enterprise}</span>`;
+const VB = (classic, enterprise) => `<div class="v-c">${classic}</div><div class="v-e">${enterprise}</div>`;
 
 // ── shared pieces ─────────────────────────────────────────────────────────
 
@@ -79,7 +93,7 @@ const header = (L, page) => {
     <nav class="main-nav" id="main-nav" aria-label="Main">
       <ul role="list">${items}</ul>
       <div class="nav-mobile-extra">
-        <a class="btn btn-primary btn-block" href="${href(L, 'contact/')}">${esc(L.nav.cta)}</a>
+        <a class="btn btn-primary btn-block" href="${href(L, 'contact/')}">${V(esc(L.nav.cta), esc(L.ent.nav.cta))}</a>
         ${socialLinks('social social-lg')}
       </div>
     </nav>
@@ -88,7 +102,7 @@ const header = (L, page) => {
         <button class="lang-btn" type="button" aria-expanded="false" aria-haspopup="true" aria-label="${esc(L.nav.language)}">${icon('globe')}<span>${L.short}</span>${icon('chevron', 'chev')}</button>
         <ul class="lang-menu" role="list">${langs}</ul>
       </div>
-      <a class="btn btn-primary btn-sm header-cta" href="${href(L, 'contact/')}">${esc(L.nav.cta)}</a>
+      <a class="btn btn-primary btn-sm header-cta" href="${href(L, 'contact/')}">${V(esc(L.nav.cta), esc(L.ent.nav.cta))}</a>
       <button class="burger" type="button" aria-controls="main-nav" aria-expanded="false" aria-label="${esc(L.nav.menu)}" data-burger>${icon('menu', 'i-open')}${icon('close', 'i-close')}</button>
     </div>
   </div>
@@ -100,7 +114,7 @@ const footer = (L) => `
   <div class="container footer-grid">
     <div class="footer-brand">
       ${logo(L)}
-      <p>${esc(L.footer.tagline)}</p>
+      <p>${V(esc(L.footer.tagline), esc(L.ent.footerTagline))}</p>
       ${socialLinks('social social-lg')}
     </div>
     <div>
@@ -113,7 +127,7 @@ const footer = (L) => `
       <h3 class="footer-title">${esc(L.footer.programs)}</h3>
       <ul role="list" class="footer-links">
         ${['computer', 'ai', 'software', 'games', 'youth']
-          .map((c) => `<li><a href="${href(L, 'programs/')}#${c}">${esc(L.categories[c])}</a></li>`)
+          .map((c) => `<li${c === 'youth' ? ' class="v-c"' : ''}><a href="${href(L, 'programs/')}#${c}">${esc(L.categories[c])}</a></li>`)
           .join('')}
       </ul>
     </div>
@@ -146,12 +160,19 @@ const whatsappWidget = (L) => `
   <button class="wa-fab" type="button" aria-controls="wa-card" aria-expanded="false" aria-label="${esc(L.common.whatsappLabel)}" data-wa-toggle>${icon('whatsapp')}</button>
 </div>`;
 
+// Runs in <head> before first paint: theme from config.js, unless this browser is previewing
+// another one with ?theme=classic|enterprise (remembered for the tab; ?theme=reset clears it).
+const THEME_BOOT = `(function(){var d=document.documentElement,t=(window.ADASTRA_CONFIG||{}).theme,ok=${JSON.stringify(THEMES)};
+try{var q=new URLSearchParams(location.search).get('theme');if(q==='reset')sessionStorage.removeItem('adastra-theme');else if(ok.indexOf(q)>=0)sessionStorage.setItem('adastra-theme',q);t=sessionStorage.getItem('adastra-theme')||t}catch(e){}
+if(ok.indexOf(t)<0)t='classic';d.setAttribute('data-theme',t);d.classList.add('js');
+var m=document.querySelector('meta[name=theme-color]');if(m)m.content=t==='enterprise'?'#0b2545':'#070b1a'})()`.replace(/\n/g, '');
+
 const layout = (L, page, { title, description, body, jsonld = '' }) => {
   const url = SITE_URL + href(L, page.slug);
   const alternates = LANGS.map((o) => `<link rel="alternate" hreflang="${o.code}" href="${SITE_URL + href(o, page.slug)}">`).join('\n  ');
   const fullTitle = page.id === 'home' ? `Adastra — ${title}` : `${title} | Adastra`;
   return `<!doctype html>
-<html lang="${L.code}">
+<html lang="${L.code}" data-theme="${THEME}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -168,15 +189,16 @@ const layout = (L, page, { title, description, body, jsonld = '' }) => {
   <meta property="og:image" content="${SITE_URL}/assets/img/og.png">
   <meta property="og:locale" content="${L.locale}">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="theme-color" content="#070b1a">
-  <script>document.documentElement.classList.add('js')</script>
+  <meta name="theme-color" content="${THEME === 'enterprise' ? '#0b2545' : '#070b1a'}">
+  <script src="/assets/config.js?v=${VERSION}"></script>
+  <script>${THEME_BOOT}</script>
   <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap">
   <link rel="stylesheet" href="/assets/css/style.css?v=${VERSION}">
-  <script src="/assets/config.js?v=${VERSION}" defer></script>
+  <link rel="stylesheet" href="/assets/css/enterprise.css?v=${VERSION}">
   <script src="/assets/js/main.js?v=${VERSION}" defer></script>
   ${jsonld}
 </head>
@@ -207,13 +229,13 @@ const sectionHead = ({ eyebrow, title, lead }, center = true) => `
         ${lead ? `<p class="lead">${esc(lead)}</p>` : ''}
       </div>`;
 
-const pageHero = (h, extra = '') => `
+const pageHero = (h, extra = '', raw = false) => `
     <section class="page-hero">
       <div class="hero-bg" aria-hidden="true"><canvas data-stars></canvas><div class="glow glow-1"></div><div class="glow glow-2"></div></div>
       <div class="container narrow" data-reveal>
-        <p class="eyebrow">${esc(h.eyebrow)}</p>
-        <h1>${esc(h.title)}</h1>
-        <p class="lead">${esc(h.lead)}</p>
+        <p class="eyebrow">${raw ? h.eyebrow : esc(h.eyebrow)}</p>
+        <h1>${raw ? h.title : esc(h.title)}</h1>
+        <p class="lead">${raw ? h.lead : esc(h.lead)}</p>
         ${extra}
       </div>
     </section>`;
@@ -270,7 +292,7 @@ me.build(<span class="s">"a game"</span>)
           <div class="chip chip-web">${icon('software')}<span>React · Node</span></div>
         </div>`;
 
-const home = (L) => {
+const homeClassic = (L) => {
   const h = L.home;
   return `
     <section class="hero">
@@ -373,22 +395,155 @@ const home = (L) => {
 ${ctaBand(h.cta, L, href(L, 'programs/'))}`;
 };
 
+const homeEnterprise = (L) => {
+  const e = L.ent;
+  const bars = [[28, 74], [35, 81], [22, 68], [18, 63]]; // illustrative before/after bars, not data
+  return `
+    <section class="e-hero">
+      <div class="container e-hero-grid">
+        <div class="e-hero-copy" data-reveal>
+          <p class="e-eyebrow">${esc(e.hero.eyebrow)}</p>
+          <h1>${esc(e.hero.title)}</h1>
+          <p class="lead">${esc(e.hero.lead)}</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="${href(L, 'contact/')}?interest=2">${esc(e.hero.primary)}${icon('arrow')}</a>
+            <a class="btn btn-ghost" href="${href(L, 'programs/')}">${esc(e.hero.secondary)}</a>
+          </div>
+        </div>
+        <div class="e-plan" aria-hidden="true" data-reveal style="--d:120ms">
+          <div class="e-plan-card">
+            <p class="e-plan-label">${esc(e.plan.label)}</p>
+            <h3>${esc(e.plan.title)}</h3>
+            <p class="e-plan-meta">${esc(e.plan.meta)}</p>
+            <ol class="e-plan-mods" role="list">
+              ${e.plan.modules.map((m, i) => `<li><span class="e-mod-num">${String(i + 1).padStart(2, '0')}</span><span>${esc(m)}</span>${icon('check')}</li>`).join('')}
+            </ol>
+            <div class="e-plan-foot">${e.plan.footer.map((f) => `<span>${esc(f)}</span>`).join('')}</div>
+          </div>
+          <div class="e-assess">
+            <p>${esc(e.plan.assess)}</p>
+            <div class="e-bars">${bars.map(([b, a]) => `<div class="e-bar"><i style="height:${b}%"></i><i style="height:${a}%"></i></div>`).join('')}</div>
+            <div class="e-legend"><span><i></i>${esc(e.plan.before)}</span><span><i></i>${esc(e.plan.after)}</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="container">
+        <ul class="e-facts" role="list" data-reveal>${e.hero.facts.map((f, i) => `<li>${icon(['globe', 'pin', 'mentor'][i])}${esc(f)}</li>`).join('')}</ul>
+      </div>
+    </section>
+
+    <section class="section e-section">
+      <div class="container">
+        ${sectionHead(e.solutions, false)}
+        <div class="grid grid-4 e-solutions">
+          ${e.solutions.items
+            .map(
+              (x, i) => `<a class="card e-solution" href="${href(L, 'programs/')}#${x.key}" data-reveal style="--d:${i * 60}ms">
+            <span class="icon-tile">${icon(x.key)}</span>
+            <h3>${esc(x.title)}</h3>
+            <p>${esc(x.text)}</p>
+            <ul class="e-points" role="list">${x.points.map((pt) => `<li>${esc(pt)}</li>`).join('')}</ul>
+            <span class="card-link">${esc(L.common.learnMore)}${icon('arrow')}</span>
+          </a>`
+            )
+            .join('')}
+        </div>
+      </div>
+    </section>
+
+    <section class="section e-section e-alt">
+      <div class="container e-split">
+        <div data-reveal>
+          <p class="e-eyebrow">${esc(e.delivery.eyebrow)}</p>
+          <h2>${esc(e.delivery.title)}</h2>
+          <p class="lead">${esc(e.delivery.text)}</p>
+        </div>
+        <div class="e-formats">
+          ${e.delivery.items
+            .map((d, i) => `<div class="e-format" data-reveal style="--d:${i * 60}ms"><span class="icon-tile sm">${icon(d.icon)}</span><div><h3>${esc(d.title)}</h3><p>${esc(d.text)}</p></div></div>`)
+            .join('')}
+        </div>
+      </div>
+    </section>
+
+    <section class="section e-section e-dark">
+      <div class="container">
+        ${sectionHead(e.approach, false)}
+        <ol class="e-approach" role="list">
+          ${e.approach.steps
+            .map((st, i) => `<li data-reveal style="--d:${i * 80}ms"><span class="e-step">${String(i + 1).padStart(2, '0')}</span><h3>${esc(st.title)}</h3><p>${esc(st.text)}</p></li>`)
+            .join('')}
+        </ol>
+      </div>
+    </section>
+
+    <section class="section e-section">
+      <div class="container e-split e-split-top">
+        <div data-reveal>
+          <p class="e-eyebrow">${esc(e.included.eyebrow)}</p>
+          <h2>${esc(e.included.title)}</h2>
+          <a class="btn btn-primary" href="${href(L, 'contact/')}?interest=2">${esc(e.nav.cta)}${icon('arrow')}</a>
+        </div>
+        <ul class="e-included" role="list" data-reveal style="--d:120ms">${e.included.items.map((x) => `<li>${icon('check')}${esc(x)}</li>`).join('')}</ul>
+      </div>
+    </section>
+
+    <section class="section e-section e-alt">
+      <div class="container">
+        <div class="e-consult" data-reveal>
+          <div>
+            <p class="e-eyebrow">${esc(e.consulting.eyebrow)}</p>
+            <h2>${esc(e.consulting.title)}</h2>
+            <p>${esc(e.consulting.text)}</p>
+          </div>
+          <ul class="e-consult-list" role="list">${L.consulting.services.items.slice(0, 4).map((x) => `<li>${icon(x.icon)}${esc(x.title)}</li>`).join('')}</ul>
+          <a class="btn btn-ghost" href="${href(L, 'consulting/')}">${esc(e.consulting.cta)}${icon('arrow')}</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section e-section">
+      <div class="container narrow">
+        ${sectionHead(e.faq)}
+        <div class="faq" data-reveal>
+          ${e.faq.items.map((q) => `<details><summary>${esc(q.q)}<span class="faq-icon" aria-hidden="true"></span></summary><p>${esc(q.a)}</p></details>`).join('')}
+        </div>
+      </div>
+    </section>
+
+    <section class="section e-section e-cta-wrap">
+      <div class="container">
+        <div class="e-cta" data-reveal>
+          <div><h2>${esc(e.cta.title)}</h2><p>${esc(e.cta.text)}</p></div>
+          <div class="btn-row">
+            <a class="btn btn-light" href="${href(L, 'contact/')}?interest=2">${esc(e.cta.primary)}${icon('arrow')}</a>
+            <a class="btn btn-ghost-light" data-cfg-mailto href="mailto:${esc(CFG.contact.email)}">${esc(e.cta.secondary)}</a>
+          </div>
+        </div>
+      </div>
+    </section>`;
+};
+
+const home = (L) => VB(homeClassic(L), homeEnterprise(L));
+
 const programs = (L) => {
   const p = L.programs;
   const cats = ['computer', 'ai', 'software', 'games', 'youth'];
   const filters = `
       <div class="filters" role="group" aria-label="${esc(p.filterLabel)}" data-filters>
         <button type="button" class="filter" aria-pressed="true" data-filter="all">${esc(L.common.all)}</button>
-        ${cats.map((c) => `<button type="button" class="filter" aria-pressed="false" data-filter="${c}">${icon(c)}${esc(L.categories[c])}</button>`).join('')}
+        ${cats.map((c) => `<button type="button" class="filter${c === 'youth' ? ' v-c' : ''}" aria-pressed="false" data-filter="${c}">${icon(c)}${esc(L.categories[c])}</button>`).join('')}
       </div>`;
-  return `${pageHero(p.hero)}
+  const ent = L.ent.programs;
+  const hero = { eyebrow: V(esc(p.hero.eyebrow), esc(ent.eyebrow)), title: V(esc(p.hero.title), esc(ent.title)), lead: V(esc(p.hero.lead), esc(ent.lead)) };
+  return `${pageHero(hero, '', true)}
     <section class="section section-tight">
       <div class="container">
         ${filters}
         <div class="grid grid-3 courses" data-courses>
           ${p.items
             .map(
-              (c) => `<article class="card course" data-cat="${c.cat}" data-reveal>
+              (c) => `<article class="card course${c.cat === 'youth' ? ' v-c' : ''}" data-cat="${c.cat}" data-reveal>
             <div class="course-top">
               <span class="icon-tile sm cat-${c.cat}">${icon(c.cat)}</span>
               <span class="course-cat">${esc(L.categories[c.cat])}</span>
@@ -401,7 +556,7 @@ const programs = (L) => {
               <div><dt>${esc(L.common.level)}</dt><dd><span class="lvl lvl-${c.level}"></span>${esc(L.levels[c.level])}</dd></div>
               <div><dt>${esc(L.common.format)}</dt><dd>${esc(L.formats[c.format])}</dd></div>
             </dl>
-            <a class="card-link" href="${href(L, 'contact/')}?interest=0&amp;topic=${encodeURIComponent(c.title)}">${esc(L.common.enquire)}${icon('arrow')}</a>
+            <a class="card-link" href="${href(L, 'contact/')}?interest=0&amp;topic=${encodeURIComponent(c.title)}" data-ent-interest="2">${V(esc(L.common.enquire), esc(ent.enquire))}${icon('arrow')}</a>
           </article>`
             )
             .join('')}

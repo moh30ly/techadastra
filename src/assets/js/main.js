@@ -9,6 +9,7 @@
   var i18n = {};
   try { i18n = JSON.parse($('#i18n').textContent); } catch (e) {}
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var theme = document.documentElement.getAttribute('data-theme') || 'classic';
 
   // ── settings from config.js ────────────────────────────────────────────
   function applyConfig() {
@@ -53,6 +54,7 @@
       });
       $$('[data-cfg-wrap="' + k + '"]').forEach(function (el) { el.hidden = !values[k]; });
     });
+    $$('[data-cfg-mailto]').forEach(function (a) { a.href = 'mailto:' + values.email; a.hidden = !values.email; });
     $$('[data-cfg-map]').forEach(function (f) { if (c.mapEmbedUrl && f.src !== c.mapEmbedUrl) f.src = c.mapEmbedUrl; });
     $$('[data-cfg-wrap="map"]').forEach(function (el) { el.hidden = !c.mapEmbedUrl; });
   }
@@ -121,6 +123,7 @@
 
   // ── starfield ──────────────────────────────────────────────────────────
   function initStars() {
+    if (theme === 'enterprise') return; // the enterprise design has no starfield
     $$('canvas[data-stars]').forEach(function (cv) {
       var ctx = cv.getContext('2d');
       var stars = [];
@@ -169,7 +172,7 @@
     var buttons = $$('[data-filter]', box);
     var cards = $$('[data-courses] .course');
     var apply = function (cat) {
-      if (!buttons.some(function (b) { return b.dataset.filter === cat; })) cat = 'all';
+      if (!buttons.some(function (b) { return b.dataset.filter === cat && b.offsetParent !== null; })) cat = 'all';
       buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.filter === cat)); });
       cards.forEach(function (c) {
         var show = cat === 'all' || c.dataset.cat === cat;
@@ -200,6 +203,7 @@
     var q = new URLSearchParams(location.search);
     var sel = $('[data-interest]', form);
     if (q.has('interest') && sel.options[+q.get('interest')]) sel.selectedIndex = +q.get('interest');
+    else if (theme === 'enterprise') sel.selectedIndex = 2; // "Corporate training"
     if (q.get('topic')) form.message.value = q.get('topic') + ' — ';
 
     var say = function (msg, cls) { status.textContent = msg; status.className = 'form-status ' + (cls || ''); };
@@ -264,7 +268,32 @@
     });
   }
 
+  // Enterprise: course "Request for my team" links preselect corporate training.
+  function initEnterpriseLinks() {
+    if (theme !== 'enterprise') return;
+    $$('[data-ent-interest]').forEach(function (a) {
+      a.href = a.getAttribute('href').replace(/interest=\d+/, 'interest=' + a.getAttribute('data-ent-interest'));
+    });
+  }
+
+  // Shown only while previewing an edition with ?theme=…, so the site owner can flip between them.
+  function initThemePreview() {
+    var previewing = null;
+    try { previewing = sessionStorage.getItem('adastra-theme'); } catch (e) {}
+    if (!previewing) return;
+    var bar = document.createElement('div');
+    bar.className = 'theme-preview';
+    bar.setAttribute('role', 'group');
+    bar.setAttribute('aria-label', 'Theme preview');
+    bar.innerHTML = '<span>Preview</span>' + ['classic', 'enterprise'].map(function (t) {
+      return '<a href="?theme=' + t + '"' + (t === theme ? ' aria-current="true"' : '') + '>' + t.charAt(0).toUpperCase() + t.slice(1) + '</a>';
+    }).join('') + '<a href="?theme=reset" title="Stop previewing">✕</a>';
+    document.body.appendChild(bar);
+  }
+
   applyConfig();
+  initEnterpriseLinks();
+  initThemePreview();
   initHeader();
   initWhatsApp();
   initReveal();

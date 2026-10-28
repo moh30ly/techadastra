@@ -21,8 +21,9 @@ services:
     ports:
       - "${WEB_PORT:-8484}:80"
     volumes:
-      # Edit settings without rebuilding.
-      - ./src/assets/config.js:/usr/share/nginx/html/assets/config.js:ro
+      # Edit config.js (and CSS/JS/images) without rebuilding. The whole folder is mounted:
+      # a single-file mount would keep serving the old file after most editors save it.
+      - ./src/assets:/usr/share/nginx/html/assets:ro
     depends_on:
       - api
     restart: unless-stopped
