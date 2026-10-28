@@ -9,6 +9,11 @@
 #
 # To use an existing database instead of the bundled one, set DATABASE_URL in .env
 # and start only web + api:  docker compose up -d --build web api
+
+# Fixed project name: containers, network and volume are always techadastra-*,
+# whatever the folder is called, so they never mix with other stacks on the host.
+name: techadastra
+
 services:
   web:
     build: .
