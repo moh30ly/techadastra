@@ -1,13 +1,13 @@
 # Local / self-hosted stack for techadastra.com:
 #   web  nginx serving the built site, proxying /api/ → api
-#   api  contact-form API (stores enquiries in Postgres)
-#   db   Postgres 16
+#   api  contact-form API (stores enquiries in MariaDB — or Postgres, see DATABASE_URL)
+#   db   MariaDB 11.4
 #
 #   cp .env.example .env   # set passwords
 #   docker compose up -d --build
 #   open http://localhost:8080
 #
-# To use an existing Postgres instead of the bundled one, set DATABASE_URL in .env
+# To use an existing database instead of the bundled one, set DATABASE_URL in .env
 # and start only web + api:  docker compose up -d --build web api
 services:
   web:
@@ -26,23 +26,28 @@ services:
     build: ./api
     image: techadastra-api
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgres://adastra:${POSTGRES_PASSWORD:-adastra}@db:5432/adastra}
+      DATABASE_URL: ${DATABASE_URL:-mysql://adastra:${DB_PASSWORD:-adastra}@db:3306/adastra}
       ADMIN_TOKEN: ${ADMIN_TOKEN:?set ADMIN_TOKEN in .env}
+    extra_hosts:
+      # Lets DATABASE_URL point at a database on the Docker host (e.g. aaPanel's MariaDB).
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
 
   db:
-    image: postgres:16-alpine
+    image: mariadb:11.4
     environment:
-      POSTGRES_DB: adastra
-      POSTGRES_USER: adastra
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-adastra}
+      MARIADB_DATABASE: adastra
+      MARIADB_USER: adastra
+      MARIADB_PASSWORD: ${DB_PASSWORD:-adastra}
+      MARIADB_RANDOM_ROOT_PASSWORD: "1"
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - mariadb-data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U adastra -d adastra"]
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 5s
-      retries: 10
+      retries: 20
     restart: unless-stopped
 
 volumes:
-  db-data:
+  mariadb-data:

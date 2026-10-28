@@ -5,27 +5,11 @@
 // Settings come from the environment: DATABASE_URL, ADMIN_TOKEN, PORT.
 
 import http from 'node:http';
-import pg from 'pg';
+import { connect } from './db.mjs';
 
 const PORT = Number(process.env.PORT || 3000);
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
-const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
-
-const SCHEMA = `
-CREATE TABLE IF NOT EXISTS contact_messages (
-  id          BIGSERIAL PRIMARY KEY,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-  name        TEXT NOT NULL,
-  email       TEXT NOT NULL,
-  phone       TEXT,
-  language    TEXT,
-  interest    TEXT,
-  message     TEXT NOT NULL,
-  page        TEXT,
-  ip          TEXT,
-  user_agent  TEXT
-);
-CREATE INDEX IF NOT EXISTS contact_messages_created_at ON contact_messages (created_at DESC);`;
+const db = await connect(process.env.DATABASE_URL);
 
 // Field → max length. Anything longer is rejected rather than silently cut.
 const FIELDS = { name: 200, email: 254, phone: 50, language: 50, interest: 200, message: 5000, page: 500 };
@@ -86,22 +70,15 @@ async function createMessage(req, res) {
   if (missing.length) return send(res, 422, { error: 'missing', fields: missing });
   if (!EMAIL.test(data.email)) return send(res, 422, { error: 'invalid', field: 'email' });
 
-  const { rows } = await pool.query(
-    `INSERT INTO contact_messages (name, email, phone, language, interest, message, page, ip, user_agent)
-     VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, $7, $8, $9) RETURNING id`,
-    [data.name, data.email, data.phone, data.language, data.interest, data.message, data.page, ip, String(req.headers['user-agent'] || '').slice(0, 500)]
-  );
-  console.log(`contact #${rows[0].id} from ${data.email}`);
-  send(res, 201, { ok: true, id: rows[0].id });
+  const id = await db.insert({ ...data, ip, user_agent: String(req.headers['user-agent'] || '').slice(0, 500) });
+  console.log(`contact #${id} from ${data.email}`);
+  send(res, 201, { ok: true, id });
 }
 
 async function listMessages(req, res) {
   const auth = req.headers.authorization || '';
   if (!ADMIN_TOKEN || auth !== `Bearer ${ADMIN_TOKEN}`) return send(res, 401, { error: 'unauthorized' });
-  const { rows } = await pool.query(
-    'SELECT id, created_at, name, email, phone, language, interest, message, page FROM contact_messages ORDER BY created_at DESC LIMIT 200'
-  );
-  send(res, 200, rows);
+  send(res, 200, await db.list(200));
 }
 
 const server = http.createServer(async (req, res) => {
@@ -110,7 +87,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && path === '/api/contact') return await createMessage(req, res);
     if (req.method === 'GET' && path === '/api/messages') return await listMessages(req, res);
     if (req.method === 'GET' && path === '/api/health') {
-      await pool.query('SELECT 1');
+      await db.ping();
       return send(res, 200, { ok: true });
     }
     send(res, 404, { error: 'not_found' });
@@ -124,7 +101,7 @@ const server = http.createServer(async (req, res) => {
 // The database may still be starting when the container comes up.
 for (let attempt = 1; ; attempt++) {
   try {
-    await pool.query(SCHEMA);
+    await db.init();
     break;
   } catch (err) {
     if (attempt >= 30) throw err;
@@ -132,4 +109,4 @@ for (let attempt = 1; ; attempt++) {
     await new Promise((r) => setTimeout(r, 2000));
   }
 }
-server.listen(PORT, () => console.log(`contact API listening on :${PORT}`));
+server.listen(PORT, () => console.log(`contact API listening on :${PORT} (${db.dialect})`));

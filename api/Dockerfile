@@ -7,7 +7,7 @@ COPY package.json package-lock.json ./
 #   docker build --secret id=ca,src=/path/to/ca.crt ...
 RUN --mount=type=secret,id=ca,required=false \
     NODE_EXTRA_CA_CERTS=$([ -f /run/secrets/ca ] && echo /run/secrets/ca) npm ci --omit=dev
-COPY server.mjs ./
+COPY *.mjs ./
 USER node
 EXPOSE 3000
 CMD ["node", "server.mjs"]

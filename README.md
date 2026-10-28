@@ -21,7 +21,7 @@ techadastra/
 │       ├── css/style.css
 │       ├── js/main.js
 │       └── img/              # favicon, apple-touch-icon, og.png (link previews)
-├── api/                      # contact-form API (Node + Postgres)
+├── api/                      # contact-form API (Node; MariaDB/MySQL or Postgres)
 ├── Dockerfile                # builds the site into an nginx image
 ├── docker-compose.yml        # web + api + db
 └── deploy/
@@ -45,7 +45,7 @@ browser's language. If neither is set, it uses English. The build also writes `s
 | `whatsapp.widgetScriptUrl` | For the WhatsApp chat integration you plan later (WATI, respond.io, Twilio, Elfsight…). Paste the provider's script URL here. It loads on every page and replaces the built-in button. |
 | `contact.email`, `contact.phone`, `contact.address`, `contact.hours` | Shown in the footer and on the contact page. An empty value hides that line. |
 | `contact.mapEmbedUrl` | Google Maps → Share → Embed a map → copy the `src`. |
-| `contactForm.endpoint` | The URL the contact form POSTs its JSON to. The default, `/api/contact`, is the bundled API, which saves enquiries to the database (see Docker below). Formspree, Getform or Web3Forms URLs also work. If the value is empty, or no API answers at that URL (for example on plain static hosting), the form opens the visitor's email app with a message addressed to `contact.email`. |
+| `contactForm.endpoint` | The URL the contact form POSTs its JSON to. The default, `/api/contact`, is the bundled API, which saves enquiries to MariaDB (see Docker below). Formspree, Getform or Web3Forms URLs also work. If the value is empty, or no API answers at that URL (for example on plain static hosting), the form opens the visitor's email app with a message addressed to `contact.email`. |
 
 The browser reads this file on every page load, so you have two ways to change it:
 
@@ -74,24 +74,76 @@ cd dist && python3 -m http.server 8080
 ## Running with Docker (site + contact API + database)
 
 ```bash
-cp .env.example .env        # set POSTGRES_PASSWORD and ADMIN_TOKEN
+cp .env.example .env        # set DB_PASSWORD and ADMIN_TOKEN
 docker compose up -d --build
 ```
 
-The site is then at http://localhost:8080. Change the port with `WEB_PORT` in `.env`.
-Contact-form enquiries are saved in the `contact_messages` table. To read them:
+This starts three containers: nginx with the site, the contact-form API, and MariaDB 11.4.
+The site is then at http://localhost:8080; change the port with `WEB_PORT` in `.env`.
+Contact-form enquiries are saved in the `contact_messages` table (utf8mb4, so Turkish,
+German and emoji are stored intact). The API creates the table when it starts. To read the
+enquiries:
 
 ```bash
 curl -H "Authorization: Bearer $ADMIN_TOKEN" http://localhost:8080/api/messages
 ```
 
 ```bash
-docker compose exec db psql -U adastra -d adastra -c "select * from contact_messages order by id desc"
+docker compose exec db mariadb --default-character-set=utf8mb4 -uadastra -p adastra -e "SELECT * FROM contact_messages ORDER BY id DESC"
 ```
 
-* **Using an existing database:** set `DATABASE_URL=postgres://user:pass@host:5432/db` in
-  `.env`, then run `docker compose up -d --build web api`. The API creates its table on
-  start.
+### Which database: `DATABASE_URL`
+
+The API picks its driver from the URL scheme:
+
+| `DATABASE_URL` | Database |
+|---|---|
+| `mysql://user:pass@host:3306/db` or `mariadb://…` | MariaDB / MySQL |
+| `postgres://user:pass@host:5432/db` | PostgreSQL |
+
+If `DATABASE_URL` is not set, the API uses the bundled `db` container. When you use an
+existing database, start only the web and API containers:
+
+```bash
+docker compose up -d --build web api
+```
+
+### Using server 1's MariaDB (aaPanel)
+
+aaPanel's MariaDB runs on the host, not in Docker. The API reaches it through
+`host.docker.internal`.
+
+1. **Create the database and a user** that Docker containers can log in as. Containers
+   connect from `172.x` addresses. Run this as root, using the client at
+   `/www/server/mysql/bin/mysql`:
+
+   ```sql
+   CREATE DATABASE techadastra CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   CREATE USER 'techadastra'@'172.%' IDENTIFIED BY 'a-long-random-password';
+   GRANT SELECT, INSERT, CREATE ON techadastra.* TO 'techadastra'@'172.%';
+   ```
+
+2. **Make MariaDB listen beyond 127.0.0.1.** In `/etc/my.cnf`, set
+   `bind-address = 0.0.0.0` or comment the line out, then restart MariaDB from aaPanel.
+   Keep port 3306 **closed** in aaPanel's firewall: the containers reach it over Docker's
+   internal network, so it never needs to be open to the internet.
+
+3. **Point the API at it** in `.env`:
+
+   ```
+   DATABASE_URL=mysql://techadastra:a-long-random-password@host.docker.internal:3306/techadastra
+   ```
+
+   Then run `docker compose up -d --build web api`. If the API log
+   (`docker compose logs api`) ends with `contact API listening on :3000 (mariadb)`, it is
+   connected.
+
+4. **Publish the site.** In aaPanel, set `techadastra.com` to reverse-proxy to
+   `http://127.0.0.1:8080` (Website → techadastra.com → Reverse proxy), then add SSL as
+   described below.
+
+### Other Docker notes
+
 * **Settings:** `src/assets/config.js` is mounted into the container, so edits to it are
   live without a rebuild. After changing text in `src/content/`, run
   `docker compose up -d --build web`.
