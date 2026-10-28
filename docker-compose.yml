@@ -5,7 +5,7 @@
 #
 #   cp .env.example .env   # set passwords
 #   docker compose up -d --build
-#   open http://localhost:8080
+#   open http://localhost:8484
 #
 # To use an existing database instead of the bundled one, set DATABASE_URL in .env
 # and start only web + api:  docker compose up -d --build web api
@@ -19,7 +19,7 @@ services:
     build: .
     image: techadastra-web
     ports:
-      - "${WEB_PORT:-8080}:80"
+      - "${WEB_PORT:-8484}:80"
     volumes:
       # Edit settings without rebuilding.
       - ./src/assets/config.js:/usr/share/nginx/html/assets/config.js:ro

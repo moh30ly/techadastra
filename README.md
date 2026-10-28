@@ -68,7 +68,7 @@ node build.mjs
 To preview locally:
 
 ```bash
-cd dist && python3 -m http.server 8080
+cd dist && python3 -m http.server 8484
 ```
 
 ## Running with Docker (site + contact API + database)
@@ -79,13 +79,15 @@ docker compose up -d --build
 ```
 
 This starts three containers: nginx with the site, the contact-form API, and MariaDB 11.4.
-The site is then at http://localhost:8080; change the port with `WEB_PORT` in `.env`.
+The site is then at http://localhost:8484. If another program already uses that port
+(`docker compose up` reports "port is already allocated"), set a free one with `WEB_PORT`
+in `.env`.
 Contact-form enquiries are saved in the `contact_messages` table (utf8mb4, so Turkish,
 German and emoji are stored intact). The API creates the table when it starts. To read the
 enquiries:
 
 ```bash
-curl -H "Authorization: Bearer $ADMIN_TOKEN" http://localhost:8080/api/messages
+curl -H "Authorization: Bearer $ADMIN_TOKEN" http://localhost:8484/api/messages
 ```
 
 ```bash
@@ -139,7 +141,7 @@ aaPanel's MariaDB runs on the host, not in Docker. The API reaches it through
    connected.
 
 4. **Publish the site.** In aaPanel, set `techadastra.com` to reverse-proxy to
-   `http://127.0.0.1:8080` (Website → techadastra.com → Reverse proxy), then add SSL as
+   `http://127.0.0.1:8484` (Website → techadastra.com → Reverse proxy), then add SSL as
    described below.
 
 ### Other Docker notes
