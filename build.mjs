@@ -73,6 +73,7 @@ const logo = (L) => `
 const socialLinks = (cls = 'social') => `
 <ul class="${cls}" role="list">
   <li data-social-wrap="instagram"${hiddenIf(!CFG.social.instagram)}><a data-social="instagram" href="${esc(CFG.social.instagram || '#')}" target="_blank" rel="noopener" aria-label="Instagram">${icon('instagram')}</a></li>
+  <li data-social-wrap="x"${hiddenIf(!CFG.social.x)}><a data-social="x" href="${esc(CFG.social.x || '#')}" target="_blank" rel="noopener" aria-label="X (Twitter)">${icon('x')}</a></li>
   <li data-social-wrap="linkedin"${hiddenIf(!CFG.social.linkedin)}><a data-social="linkedin" href="${esc(CFG.social.linkedin || '#')}" target="_blank" rel="noopener" aria-label="LinkedIn">${icon('linkedin')}</a></li>
   <li><a data-wa href="${esc(waHref(currentLang))}" target="_blank" rel="noopener" aria-label="WhatsApp">${icon('whatsapp')}</a></li>
 </ul>`;
@@ -723,7 +724,7 @@ const orgJsonLd = (L) =>
     telephone: CFG.contact.phone || undefined,
     address: { '@type': 'PostalAddress', addressLocality: 'Beşiktaş', addressRegion: 'İstanbul', addressCountry: 'TR' },
     availableLanguage: ['English', 'Turkish', 'German'],
-    sameAs: [CFG.social.instagram, CFG.social.linkedin].filter(Boolean),
+    sameAs: [CFG.social.instagram, CFG.social.x, CFG.social.linkedin].filter(Boolean),
   })}</script>`;
 
 // ── write ─────────────────────────────────────────────────────────────────

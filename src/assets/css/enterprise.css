@@ -305,3 +305,4 @@ html[data-theme='enterprise'] .wa-fab::before { display: none; }
   .e-approach li, .e-approach li + li { padding: 24px 0 8px; border-left: 0; }
   .e-approach li + li { border-top: 1px solid rgba(255, 255, 255, 0.12); }
 }
+html[data-theme='enterprise'] .wa-tile { background: #e7f8ee; color: #128c4b; }

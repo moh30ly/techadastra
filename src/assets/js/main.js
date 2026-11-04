@@ -14,7 +14,7 @@
   // ── settings from config.js ────────────────────────────────────────────
   function applyConfig() {
     var social = CFG.social || {};
-    ['instagram', 'linkedin'].forEach(function (k) {
+    ['instagram', 'x', 'linkedin'].forEach(function (k) {
       $$('[data-social="' + k + '"]').forEach(function (a) { if (social[k]) a.href = social[k]; });
       $$('[data-social-wrap="' + k + '"]').forEach(function (li) { li.hidden = !social[k]; });
     });

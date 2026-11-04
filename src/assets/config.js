@@ -15,18 +15,19 @@ window.ADASTRA_CONFIG = {
   //   'enterprise' — light, corporate design focused on training for companies
   // To compare without changing this, open any page with ?theme=enterprise or
   // ?theme=classic (that browser tab keeps it; ?theme=reset goes back to this value).
-  theme: 'classic',
+  theme: 'enterprise',
 
   social: {
     // Full profile URLs. Empty string hides the icon everywhere.
-    instagram: 'https://www.instagram.com/techadastra', // TODO: confirm handle
+    instagram: 'https://www.instagram.com/techadastra',
+    x: 'https://x.com/techadastra', // X (Twitter)
     linkedin: 'https://www.linkedin.com/company/techadastra', // TODO: confirm page
   },
 
   whatsapp: {
     // International format, digits only, no + or spaces. e.g. '905321234567'
     // While empty, WhatsApp buttons open the contact page instead.
-    number: '',
+    number: '905822082069',
     // Floating WhatsApp button in the bottom corner of every page.
     floatingButton: true,
     // Later: paste a third-party WhatsApp chat widget here (WATI, respond.io,
@@ -37,7 +38,7 @@ window.ADASTRA_CONFIG = {
 
   contact: {
     email: 'info@techadastra.com',
-    phone: '', // e.g. '+90 212 000 00 00' — empty hides it
+    phone: '+90 582 208 20 69', // empty hides it
     address: 'Beşiktaş, İstanbul, Türkiye',
     // Google Maps "Embed a map" src URL (Share → Embed a map → copy the src).
     mapEmbedUrl: 'https://www.google.com/maps?q=Be%C5%9Fikta%C5%9F%2C%20%C4%B0stanbul&output=embed',

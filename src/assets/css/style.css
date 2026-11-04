@@ -174,6 +174,7 @@ p { margin: 0 0 1em; }
 .social a:hover { color: #fff; transform: translateY(-2px); }
 .social a[data-social='instagram']:hover { background: radial-gradient(circle at 30% 110%, #fdf497 0%, #fd5949 45%, #d6249f 60%, #285aeb 90%); border-color: transparent; }
 .social a[data-social='linkedin']:hover { background: #0a66c2; border-color: transparent; }
+.social a[data-social='x']:hover { background: #000; border-color: transparent; }
 .social a[data-wa]:hover { background: var(--green); border-color: transparent; color: #062b14; }
 .social-lg a { width: 46px; height: 46px; }
 .social-lg a svg { width: 20px; height: 20px; }

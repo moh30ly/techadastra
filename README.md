@@ -62,7 +62,7 @@ other text is shared, in `src/content/{en,tr,de}.mjs`.
 | Setting | What it does |
 |---|---|
 | `theme` | `'classic'` or `'enterprise'`. See *Two editions* above. |
-| `social.instagram`, `social.linkedin` | Full profile URLs. Set one to `''` to hide that icon everywhere. |
+| `social.instagram`, `social.x`, `social.linkedin` | Full profile URLs (`x` is X/Twitter). Set one to `''` to hide that icon everywhere. |
 | `whatsapp.number` | Digits only, in international format, e.g. `905321234567`. While it is empty, the WhatsApp buttons open the contact page. |
 | `whatsapp.floatingButton` | Shows or hides the green chat button and the "Start chat" card. |
 | `whatsapp.widgetScriptUrl` | For the WhatsApp chat integration you plan later (WATI, respond.io, Twilio, Elfsight…). Paste the provider's script URL here. It loads on every page and replaces the built-in button. |
