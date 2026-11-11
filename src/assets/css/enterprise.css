@@ -65,6 +65,9 @@ html[data-theme='enterprise'] .e-cta {
 /* ── type ───────────────────────────────────────────── */
 html[data-theme='enterprise'] h1,
 html[data-theme='enterprise'] h2 { font-family: var(--display); font-weight: 600; letter-spacing: -0.015em; }
+/* Long compound words (German "Technologiekompetenzen") must wrap, not push the page sideways on phones. */
+html[data-theme='enterprise'] h1,
+html[data-theme='enterprise'] h2 { overflow-wrap: break-word; hyphens: auto; }
 html[data-theme='enterprise'] h1 { font-size: clamp(2.3rem, 4.4vw, 3.6rem); line-height: 1.1; }
 html[data-theme='enterprise'] h2 { font-size: clamp(1.75rem, 3vw, 2.5rem); }
 html[data-theme='enterprise'] h3,

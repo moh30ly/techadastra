@@ -10,7 +10,7 @@
  * ─────────────────────────────────────────────────────────────────────────
  */
 window.ADASTRA_CONFIG = {
-  // Site edition:
+  // Site edition (enterprise is the default; a missing or unknown value also means enterprise):
   //   'classic'    — the original dark, space-themed design (courses for everyone)
   //   'enterprise' — light, corporate design focused on training for companies
   // To compare without changing this, open any page with ?theme=enterprise or

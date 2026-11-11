@@ -32,7 +32,9 @@ const VERSION = Date.now().toString(36); // cache-buster for css/js
 const sandbox = { window: {} };
 vm.runInNewContext(readFileSync(join(ROOT, 'src/assets/config.js'), 'utf8'), sandbox);
 const CFG = sandbox.window.ADASTRA_CONFIG;
-const THEME = CFG.theme === 'enterprise' ? 'enterprise' : 'classic';
+// Enterprise is the default edition: anything other than an explicit 'classic' (including a
+// server config.js from before editions existed, with no `theme` key) gets enterprise.
+const THEME = CFG.theme === 'classic' ? 'classic' : 'enterprise';
 
 const PAGES = [
   { id: 'home', slug: '' },
@@ -165,7 +167,7 @@ const whatsappWidget = (L) => `
 // another one with ?theme=classic|enterprise (remembered for the tab; ?theme=reset clears it).
 const THEME_BOOT = `(function(){var d=document.documentElement,t=(window.ADASTRA_CONFIG||{}).theme,ok=${JSON.stringify(THEMES)};
 try{var q=new URLSearchParams(location.search).get('theme');if(q==='reset')sessionStorage.removeItem('adastra-theme');else if(ok.indexOf(q)>=0)sessionStorage.setItem('adastra-theme',q);t=sessionStorage.getItem('adastra-theme')||t}catch(e){}
-if(ok.indexOf(t)<0)t='classic';d.setAttribute('data-theme',t);d.classList.add('js');
+if(ok.indexOf(t)<0)t='enterprise';d.setAttribute('data-theme',t);d.classList.add('js');
 var m=document.querySelector('meta[name=theme-color]');if(m)m.content=t==='enterprise'?'#0b2545':'#070b1a'})()`.replace(/\n/g, '');
 
 const layout = (L, page, { title, description, body, jsonld = '' }) => {
