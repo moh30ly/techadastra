@@ -9,7 +9,7 @@
   var i18n = {};
   try { i18n = JSON.parse($('#i18n').textContent); } catch (e) {}
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var theme = document.documentElement.getAttribute('data-theme') || 'classic';
+  var theme = document.documentElement.getAttribute('data-theme') || 'enterprise';
 
   // ── settings from config.js ────────────────────────────────────────────
   function applyConfig() {
